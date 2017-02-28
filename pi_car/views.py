@@ -15,6 +15,20 @@ from contextlib import closing
 from pi_car import app
 import re
 import RPi.GPIO as GPIO
+import time
+import serial
+
+ser = serial.Serial('/dev/ttyACM0', 9600)
+fl_pin = 7  # Front Light
+
+GPIO.setmode(GPIO.BOARD)
+GPIO.setwarnings(False)
+GPIO.setup(fl_pin, GPIO.OUT, initial=False)
+#GPIO.setup(a_1,GPIO.OUT,initial = False)
+#GPIO.setup(a_2,GPIO.OUT,initial = False)
+#GPIO.setup(b_1,GPIO.OUT,initial = False)
+#GPIO.setup(b_2,GPIO.OUT,initial = False)
+
 @app.route('/')
 def show_index():
 	return render_template('home.html')
@@ -30,12 +44,6 @@ def login():
 def ctrl_id():
 	if request.method == 'POST':
 		id=request.form['id']
-		GPIO.setmode(GPIO.BOARD)
-		GPIO.setwarnings(False)
-		GPIO.setup(11,GPIO.OUT)
-		GPIO.setup(12,GPIO.OUT)
-		GPIO.setup(15,GPIO.OUT)
-		GPIO.setup(16,GPIO.OUT)
 
 		if id == 't_left':
 			t_left()
@@ -52,36 +60,41 @@ def ctrl_id():
 		elif id == 't_stop':
 			t_stop()
 			return "stop"
+	return redirect(url_for('show_index'))
 
+@app.route('/ctlcam',methods=['GET','POST'])
+def ctrl_cam():
+        if request.method == 'POST':
+        	anglex = int(str(request.form['anglex']))
+		angley = int(str(request.form['angley']))
+		ser.write("C%03d%03d"%(anglex,angley))
+		return "camx:" + str(anglex) + " camy:" + str(angley)
+	return redirect(url_for('show_index'))
+
+@app.route('/ctlspeed',methods=['GET','POST'])
+def ctrl_speed():
+        if request.method == 'POST':
+        	sa = int(str(request.form['speedA']))
+		sb = int(str(request.form['speedB']))
+		ser.write("E%03d%03d"%(sa,sb))
+		return "speedA:" + str(sa) + " speedB:" + str(sb)
+	return redirect(url_for('show_index'))
+
+@app.route('/ctllight',methods=['GET','POST'])
+def ctrl_light():
+	if request.method == 'POST':
+		front_light = int(str(request.form['frontLight']))
+		GPIO.output(fl_pin, front_light)
+		return "Front Light:" + str(front_light)
 	return redirect(url_for('show_index'))
 
 def t_stop():
-	GPIO.output(11, False)
-	GPIO.output(12, False)
-	GPIO.output(15, False)
-	GPIO.output(16, False)
-
+	ser.write("S");
 def t_up():
-	GPIO.output(11, True)
-	GPIO.output(12, False)
-	GPIO.output(15, True)
-	GPIO.output(16, False)
-
+	ser.write("F");
 def t_down():
-	GPIO.output(11, False)
-	GPIO.output(12, True)
-	GPIO.output(15, False)
-	GPIO.output(16, True)
-
+	ser.write("B");
 def t_left():
-	GPIO.output(11, False)
-	GPIO.output(12, True)
-	GPIO.output(15, True)
-	GPIO.output(16, False)
-
+	ser.write("L");
 def t_right():
-	GPIO.output(11, True)
-	GPIO.output(12, False)
-	GPIO.output(15, False)
-	GPIO.output(16, True)
-
+	ser.write("R");
